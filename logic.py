@@ -1,20 +1,14 @@
 import random
-
-def gen_pass(pass_length):
-    elements = "+-/*!&$#?=@<>"
-    password = ""
-
-    for i in range(pass_length):
-        password += random.choice(elements)
-
-    return password
-
-
-
-
+     
 def preguntas():
-    pregunta = random.randint(0, 2)
+    pregunta = random.randint(0, 3)
     if pregunta== 0:
-        return "HEADS"
-    else:
-        return "TAILS"
+        return "¿Cierras la llave cuando te lavas los dientes?"
+    elif pregunta==1:
+        return "¿Separas  el plastico de la demas basura?"
+    elif pregunta==2:
+        return "¿duras mucho tiempo en la ducha?" 
+    elif pregunta==3:
+        return "¿usas desodorante en aerosol?"
+
+   

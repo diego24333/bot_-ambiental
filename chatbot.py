@@ -10,8 +10,7 @@ intents.message_content = True
 # Crear el cliente del bot
 bot = commands.Bot(command_prefix='$', intents=intents)
 
-from logic import gen_pass
-
+from logic import preguntas
 @bot.event
 async def on_ready():
     print(f'Hemos iniciado sesión como {bot.user}')
@@ -23,20 +22,13 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.startswith('$hello'):
-        await message.channel.send("Hi!")
+    if message.content.startswith('$natural'):
+        pregunta_seleccionada=preguntas()
+        await message.channel.send(pregunta_seleccionada)
+        
+    
 
-    elif message.content.startswith('$bye'):
-        await message.channel.send("Tu contraseña: " + gen_pass(10))
-
-    elif message.content.startswith('$adivinanza'):
-        await message.channel.send(
-            "¿Qué tiene agujas, pero no cose?"
-        )
-    elif message.content.lower().strip() == "reloj":
-        await message.channel.send(
-            "¡Correcto! 🎉 Has acertado la adivinanza."
-        )
+    
     
   
 
