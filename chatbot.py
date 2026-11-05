@@ -1,6 +1,6 @@
 from settings import settings
 import discord
-from bot_logic import *
+from logic import *
 
 intents = discord.Intents.default()
 intents.message_content = True
