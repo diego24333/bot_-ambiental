@@ -1,35 +1,107 @@
+from settings import settings
 import discord
-import os
-from discord.ext import commands
-# La variable intents almacena los privilegios del bot
+from bot_logic import *
+
 intents = discord.Intents.default()
-
-# Activar el privilegio de lectura de mensajes
 intents.message_content = True
+client = discord.Client(intents=intents)
 
-# Crear el cliente del bot
-bot = commands.Bot(command_prefix='$', intents=intents)
+prefix = settings["prefix"]
 
-from logic import preguntas
-@bot.event
+preguntas_activas = {}
+
+
+@client.event
 async def on_ready():
-    print(f'Hemos iniciado sesión como {bot.user}')
+    print(f'We have logged in as {client.user}')
 
 
-
-@bot.event
+@client.event
 async def on_message(message):
-    if message.author == bot.user:
+    if message.author == client.user:
         return
 
-    if message.content.startswith('$natural'):
-        pregunta_seleccionada=preguntas()
-        await message.channel.send(pregunta_seleccionada)
-        
-    
+    contenido = message.content
 
-    
-    
-  
+    if not contenido.startswith(prefix) and message.author.id in preguntas_activas:
+        canal_id, pregunta_actual = preguntas_activas[message.author.id]
+        if message.channel.id == canal_id:
+            if not respuesta_valida(pregunta_actual, contenido):
+                await message.channel.send(f"{message.author.mention} Responde con **sí** o **no**.")
+                return
+            del preguntas_activas[message.author.id]
+            resultado = procesar_respuesta(message.author.id, pregunta_actual, contenido)
+            await message.channel.send(f"{message.author.mention} {resultado}")
+        return
 
-bot.run("")
+    if not contenido.startswith(prefix):
+        return
+
+    partes = contenido[len(prefix):].split()
+    comando = partes[0].lower() if partes else ""
+
+    if comando == 'hello':
+        await message.channel.send('¡Hola! Soy un bot')
+    elif comando == 'smile':
+        await message.channel.send(gen_emodji())
+    elif comando == 'coin':
+        await message.channel.send(flip_coin())
+    elif comando == 'pass':
+        await message.channel.send(gen_pass(10))
+
+    elif comando == 'ayuda':
+        await message.channel.send(
+            "**Comandos**\n"
+            f"`{prefix}pregunta` - recibe una pregunta y responde en el chat\n"
+            f"`{prefix}puntos` - mira tus puntos y bonus\n"
+            f"`{prefix}ranking` - top 10\n"
+            f"`{prefix}tienda` - recompensas disponibles\n"
+            f"`{prefix}comprar <item>` - compra una recompensa\n"
+            f"`{prefix}hello` `{prefix}smile` `{prefix}coin` `{prefix}pass`"
+        )
+
+    elif comando == 'pregunta':
+        p = preguntas()
+        preguntas_activas[message.author.id] = (message.channel.id, p)
+        if p.get("sino"):
+            indicacion = "Responde **sí** o **no** en el chat."
+        else:
+            indicacion = "Escribe tu respuesta en el chat."
+        await message.channel.send(f"{message.author.mention} **{p['pregunta']}**\n{indicacion}")
+
+    elif comando == 'puntos':
+        pts, escudos, dobles = get_usuario(message.author.id)
+        await message.channel.send(
+            f"Puntos: **{pts}** | Escudos: **{escudos}** | Usos de doble puntos: **{dobles}**"
+        )
+
+    elif comando == 'ranking':
+        filas = ranking_top()
+        if not filas:
+            await message.channel.send("Todavía nadie tiene puntos.")
+        else:
+            lineas = [f"**{i}.** <@{uid}> - {pts} pts" for i, (uid, pts) in enumerate(filas, 1)]
+            await message.channel.send("**Ranking**\n" + "\n".join(lineas))
+
+    elif comando == 'tienda':
+        lineas = [
+            f"`{clave}` - {i['nombre']} - **{i['precio']} pts**\n{i['desc']}"
+            for clave, i in TIENDA.items()
+        ]
+        await message.channel.send(
+            f"**Tienda** (usa `{prefix}comprar <item>`, ej: `{prefix}comprar escudo`)\n\n"
+            + "\n\n".join(lineas)
+        )
+
+    elif comando == 'comprar':
+        if len(partes) < 2 or partes[1].lower() not in TIENDA:
+            await message.channel.send(f"Indica qué comprar. Mira las opciones con `{prefix}tienda`.")
+            return
+        clave = partes[1].lower()
+        ok, mensaje = comprar_item(message.author.id, clave)
+        await message.channel.send(mensaje)
+
+    else:
+        await message.channel.send(f"No puedo procesar este comando, ¡lo siento! Usa `{prefix}ayuda`.")
+
+client.run(settings["TOKEN"])
